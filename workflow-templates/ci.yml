@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SONAR_OPENCOVER_REPORTS_PATH: ./_TMP/*/coverage.opencover.xml
-      SONAR_COVERAGE_EXCLUSIONS: **Test*.cs
+      SONAR_COVERAGE_EXCLUSIONS: "**Test*.cs"
       TEST_PROJECT_PATH: ./src/scissors.sln
       TEST_EXTRA_TEST_PARAMETERS: --configuration release --collect:"XPlat Code Coverage" --settings ./src/Scissors.Test/runsettings.xml
       SOLUTION_ROOT_FOLDER: src/Scissors
