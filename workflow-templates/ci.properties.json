@@ -3,11 +3,9 @@
     "description": "CI workflow template.",
     "iconName": "example-icon",
     "categories": [
-        "dotnet"
+        "C#",
+        "ASP.NET"
     ],
     "filePatterns": [
-        "package.json$",
-        "^Dockerfile",
-        ".*\\.md$"
     ]
 }
