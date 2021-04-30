@@ -7,13 +7,13 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     env:
-      SONAR_OPENCOVER_REPORTS_PATH: ./_TMP/*/coverage.opencover.xml
+      SONAR_OPENCOVER_REPORTS_PATH: Path to OpenCover reports
       SONAR_COVERAGE_EXCLUSIONS: "**Test*.cs"
-      TEST_PROJECT_PATH: ./src/scissors.sln
-      TEST_EXTRA_TEST_PARAMETERS: --configuration release --collect:"XPlat Code Coverage" --settings ./src/Scissors.Test/runsettings.xml
-      SOLUTION_ROOT_FOLDER: src/Scissors
-      NUPKG_LOCATION: ./bin/Release/*.nupkg
-      NUPKG_SOURCE_GITHUB: https://api.nuget.org/v3/index.json
+      TEST_PROJECT_PATH: Path to solution (*.sln) file
+      TEST_EXTRA_TEST_PARAMETERS: --configuration release --collect:"XPlat Code Coverage" --settings {insert path or put .}/runsettings.xml
+      SOLUTION_ROOT_FOLDER: Solution root folder path
+      NUPKG_LOCATION: Nupkg package(s) location relative to root SOLUTION_ROOT_FOLDER
+      NUPKG_SOURCE_GITHUB: https://nuget.pkg.github.com/{your GitHub username}/index.json
       NUPKG_SOURCE_NUGET: https://api.nuget.org/v3/index.json
       
     steps:
@@ -65,7 +65,7 @@ jobs:
         with:
           project_path: ${{ env.TEST_PROJECT_PATH }}
           report_name: Test report
-          report_title: {{ env.GITHUB_REPOSITORY }} test results
+          report_title: ${{ env.GITHUB_REPOSITORY }} test results
           github_token: ${{ secrets.GITHUB_TOKEN }}
           gist_name: test_run.md
           gist_badge_label: 'Tests passed: %Counters_passed%/%Counters_total%'
