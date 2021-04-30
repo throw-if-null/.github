@@ -1,0 +1,105 @@
+name: CI
+
+on: push
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      SONAR_OPENCOVER_REPORTS_PATH: ./_TMP/*/coverage.opencover.xml
+      SONAR_COVERAGE_EXCLUSIONS: **Test*.cs
+      TEST_PROJECT_PATH: ./src/scissors.sln
+      TEST_EXTRA_TEST_PARAMETERS: --configuration release --collect:"XPlat Code Coverage" --settings ./src/Scissors.Test/runsettings.xml
+      SOLUTION_ROOT_FOLDER: src/Scissors
+      NUPKG_LOCATION: ./bin/Release/*.nupkg
+      NUPKG_SOURCE_GITHUB: https://api.nuget.org/v3/index.json
+      NUPKG_SOURCE_NUGET: https://api.nuget.org/v3/index.json
+      
+    steps:
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.11
+
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v1
+        with:
+          path: ~/sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Cache SonarCloud scanner
+        id: cache-sonar-scanner
+        uses: actions/cache@v1
+        with:
+          path: ./.sonar/scanner
+          key: ${{ runner.os }}-sonar-scanner
+          restore-keys: ${{ runner.os }}-sonar-scanner
+
+      - name: Install SonarCloud scanner
+        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          New-Item -Path ./.sonar/scanner -ItemType Directory
+          dotnet tool update dotnet-sonarscanner --tool-path ./.sonar/scanner
+   
+      - name: Sonar Begin
+        shell: pwsh
+        run: >
+          ./.sonar/scanner/dotnet-sonarscanner begin
+          /k:"MirzaMerdovic_HttpRequestInterceptor"
+          /o:"mimme"
+          /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+          /d:sonar.host.url="https://sonarcloud.io"
+          /d:sonar.cs.opencover.reportsPaths=${{ env.SONAR_OPENCOVER_REPORTS_PATH }}
+          /d:sonar.coverage.exclusions=${{ env.SONAR_COVERAGE_EXCLUSIONS }}
+          
+      - name: Run Tests
+        uses: rocklan/dotnet-tests-report@master
+        with:
+          project_path: ${{ env.TEST_PROJECT_PATH }}
+          report_name: Test report
+          report_title: {{ env.GITHUB_REPOSITORY }} test results
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gist_name: test_run.md
+          gist_badge_label: 'Tests passed: %Counters_passed%/%Counters_total%'
+          gist_token: ${{ secrets.GIST_TOKEN }}
+          set_check_status_from_test_outcome: true
+          fail_build_on_failed_tests: true
+          extra_test_parameters: ${{ env.TEST_EXTRA_TEST_PARAMETERS }} 
+
+      - name: Sonar End
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: ./.sonar/scanner/dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+
+      - name: Create nupkg package
+        shell: pwsh
+        run: |
+          cd ${{ env.SOLUTION_ROOT_FOLDER }}
+          dotnet pack --configuration Release
+
+      - name: Publish nupkg package to GitHub
+        env:
+          NUPKG_LOCATION: ./bin/Release/*.nupkg
+          NUGET_SOURCE: https://nuget.pkg.github.com/MirzaMerdovic/index.json
+        shell: pwsh
+        run: |
+          cd ${{ env.SOLUTION_ROOT_FOLDER }}
+          dotnet nuget push ${{ env.NUPKG_LOCATION }} --source ${{ env.NUPKG_SOURCE_GITHUB }}  --api-key "${{ secrets.SCISSORS_PAT }}" --skip-duplicate
+
+      - name: Publish nupkg package to Nuget
+        env:
+          NUPKG_LOCATION: ./bin/Release/*.nupkg
+          NUGET_SOURCE: https://api.nuget.org/v3/index.json
+        shell: pwsh
+        run: |
+          cd ${{ env.SOLUTION_ROOT_FOLDER }}
+          dotnet nuget push ${{ env.NUPKG_LOCATION }} --source ${{ env.NUPKG_SOURCE_NUGET }} --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
