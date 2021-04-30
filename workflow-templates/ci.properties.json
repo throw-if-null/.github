@@ -1,7 +1,7 @@
 {
     "name": "CI Template",
     "description": "CI workflow template.",
-    "iconName": "example-icon",
+    "iconName": "ci-icon",
     "categories": [
         "C#",
         "ASP.NET"
