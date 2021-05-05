@@ -11,6 +11,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     env:
+      USE_SONAR: false
       SONAR_OPENCOVER_REPORTS_PATH: Path to OpenCover reports
       SONAR_COVERAGE_EXCLUSIONS: "**Test*.cs"
       TEST_PROJECT_PATH: Path to solution (*.sln) file
@@ -22,6 +23,7 @@ jobs:
       
     steps:
       - name: Set up JDK 11
+        if: ${{ env.USE_SONAR == true }}
         uses: actions/setup-java@v1
         with:
           java-version: 1.11
@@ -32,6 +34,7 @@ jobs:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
 
       - name: Cache SonarCloud packages
+        if: ${{ env.USE_SONAR == true }}
         uses: actions/cache@v1
         with:
           path: ~/sonar/cache
@@ -39,6 +42,7 @@ jobs:
           restore-keys: ${{ runner.os }}-sonar
 
       - name: Cache SonarCloud scanner
+        if: ${{ env.USE_SONAR == true }}
         id: cache-sonar-scanner
         uses: actions/cache@v1
         with:
@@ -54,6 +58,7 @@ jobs:
           dotnet tool update dotnet-sonarscanner --tool-path ./.sonar/scanner
    
       - name: Sonar Begin
+        if: ${{ env.USE_SONAR == true }}
         shell: pwsh
         run: >
           ./.sonar/scanner/dotnet-sonarscanner begin
@@ -79,11 +84,22 @@ jobs:
           extra_test_parameters: ${{ env.TEST_EXTRA_TEST_PARAMETERS }} 
 
       - name: Sonar End
+        if: ${{ env.USE_SONAR == true }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: ./.sonar/scanner/dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
-
+  
+  nuget: 
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      ENABLED: false
+      TYPE: 'all' # 'all', 'nuget', 'github'
+    
+    if: ${{ env.ENABLED == true }}
+    
+    steps:  
       - name: Create nupkg package
         shell: pwsh
         run: |
@@ -91,6 +107,7 @@ jobs:
           dotnet pack --configuration Release
 
       - name: Publish nupkg package to GitHub
+        if: ${{ env.TYPE == 'all' || env.TYPE == 'github' }}
         env:
           NUPKG_LOCATION: ./bin/Release/*.nupkg
           NUGET_SOURCE: https://nuget.pkg.github.com/MirzaMerdovic/index.json
@@ -100,6 +117,7 @@ jobs:
           dotnet nuget push ${{ env.NUPKG_LOCATION }} --source ${{ env.NUPKG_SOURCE_GITHUB }}  --api-key "${{ secrets.SCISSORS_PAT }}" --skip-duplicate
 
       - name: Publish nupkg package to Nuget
+        if: ${{ env.TYPE == 'all' || env.TYPE == 'nuget' }}
         env:
           NUPKG_LOCATION: ./bin/Release/*.nupkg
           NUGET_SOURCE: https://api.nuget.org/v3/index.json
@@ -107,3 +125,17 @@ jobs:
         run: |
           cd ${{ env.SOLUTION_ROOT_FOLDER }}
           dotnet nuget push ${{ env.NUPKG_LOCATION }} --source ${{ env.NUPKG_SOURCE_NUGET }} --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+
+  docker: 
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      ENABLED: false
+      TYPE: 'all' # 'all', 'nuget', 'github'
+    
+    if: ${{ env.ENABLED == true }}
+    
+    steps:  
+      - name: Print info
+        run: |
+          echo Not implemented. 
